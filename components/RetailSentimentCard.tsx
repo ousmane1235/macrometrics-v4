@@ -9,15 +9,17 @@ const SOURCE_COLORS: Record<string, string> = {
   "Broker Composite": "#64748b",
 };
 
-const GROUPS = ["Tous", "Majors", "Crosses", "Commodities", "Crypto"];
+const GROUPS = ["Tous", "Majors", "Crosses", "Commodities", "Indices", "Crypto"];
 
 function getGroup(pair: string): string {
   const majors = ["EUR/USD","GBP/USD","USD/JPY","USD/CHF","USD/CAD","AUD/USD","NZD/USD"];
   const crypto = ["BTC/USD","ETH/USD","SOL/USD","XRP/USD","BNB/USD","ADA/USD","DOGE/USD"];
   const commodities = ["XAU/USD","XAG/USD","WTI Oil","Nat. Gas","Copper"];
+  const indices = ["S&P 500","Nasdaq 100","Dow Jones","VIX","DAX"];
   if (majors.includes(pair)) return "Majors";
   if (crypto.includes(pair)) return "Crypto";
   if (commodities.includes(pair)) return "Commodities";
+  if (indices.includes(pair)) return "Indices";
   return "Crosses";
 }
 
@@ -58,7 +60,7 @@ export default function RetailSentimentCard() {
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sentiment Retail</h3>
           <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
-            {hasMyfxbook ? "MyFXBook" : "Broker Composite"} · {hasBinance ? "Binance Futures (crypto)" : ""}
+            Forex · Indices · Commodités · Crypto
           </p>
         </div>
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -118,9 +120,6 @@ export default function RetailSentimentCard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>{d.pair}</span>
-                  <span style={{ fontSize: 9, color: SOURCE_COLORS[d.source] ?? "#475569", background: (SOURCE_COLORS[d.source] ?? "#475569") + "15", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>
-                    {d.source}
-                  </span>
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999,

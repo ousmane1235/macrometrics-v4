@@ -6,7 +6,6 @@ import COTChartCard from "@/components/COTChartCard";
 import RetailSentimentCard from "@/components/RetailSentimentCard";
 import SeasonalityG8 from "@/components/SeasonalityG8";
 import FundamentalFeed from "@/components/FundamentalFeed";
-import OpenInterestCard from "@/components/OpenInterestCard";
 
 export default function HomePage() {
   const parisDate = new Date().toLocaleDateString("fr-FR", {
@@ -19,7 +18,7 @@ export default function HomePage() {
       {/* Hero */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.08)", padding: "3px 10px", borderRadius: 999, border: "1px solid rgba(34,197,94,0.2)" }}>Analyse Journalière v3</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(34,197,94,0.08)", padding: "3px 10px", borderRadius: 999, border: "1px solid rgba(34,197,94,0.2)" }}>Analyse Institutionnelle</span>
           <span style={{ fontSize: 11, color: "#475569", fontFamily: "JetBrains Mono, monospace" }}>🇫🇷 {parisDate}</span>
         </div>
         <h1 style={{ fontSize: "clamp(22px, 3.5vw, 38px)", fontWeight: 800, color: "#f1f5f9", lineHeight: 1.2 }}>
@@ -27,7 +26,7 @@ export default function HomePage() {
           <span style={{ background: "linear-gradient(135deg, #d4af37, #f0c84a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Données Réelles.</span>
         </h1>
         <p style={{ fontSize: 14, color: "#64748b", marginTop: 8, maxWidth: 600 }}>
-          COT 2 ans · Retail sentiment · G8 28 paires · Saisonnalité · TradingView · FXStreet · ING Think
+          COT institutionnel · Sentiment retail · G8 28 paires · Saisonnalité · Graphiques · Actualités
         </p>
       </div>
 
@@ -45,10 +44,9 @@ export default function HomePage() {
         <COTChartCard />
       </div>
 
-      {/* Row 3: Retail Sentiment + Open Interest */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+      {/* Row 3: Retail Sentiment full width */}
+      <div style={{ marginBottom: 16 }}>
         <RetailSentimentCard />
-        <OpenInterestCard />
       </div>
 
       {/* Row 4: Seasonality G8 full width */}

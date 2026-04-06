@@ -5,8 +5,8 @@ import Footer from "@/components/Footer";
 import Ticker from "@/components/Ticker";
 
 export const metadata: Metadata = {
-  title: "MacroMetrics v3 — Analyse Journalière",
-  description: "COT 2 ans · Retail sentiment · G8 28 paires · Saisonnalité réelle · TradingView · Heure de Paris",
+  title: "MacroMetrics — Analyse Institutionnelle",
+  description: "COT 2 ans · Sentiment retail · G8 28 paires · Saisonnalité · TradingView · Heure de Paris",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

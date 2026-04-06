@@ -41,7 +41,7 @@ const YF_HEADERS = {
 async function fetchPrice(yf: string) {
   try {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yf)}?interval=1d&range=2d`;
-    const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 60 } });
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     const meta = data?.chart?.result?.[0]?.meta;
@@ -61,7 +61,7 @@ async function fetchCFTCOpenInterest(market: string): Promise<number | null> {
       "&$select=open_interest_all,report_date_as_yyyy_mm_dd",
       "&$limit=1",
     ].join("");
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     const rows = await res.json();
     if (!rows[0]) return null;

@@ -16,7 +16,7 @@ async function parseRSS(url: string, source: string, category: string, limit = 6
         "User-Agent": "Mozilla/5.0 (compatible; RSS reader)",
         Accept: "application/rss+xml, application/xml, text/xml, */*",
       },
-      next: { revalidate: 600 },
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const text = await res.text();
@@ -43,13 +43,9 @@ async function parseRSS(url: string, source: string, category: string, limit = 6
 export async function GET() {
   try {
     const feeds = await Promise.allSettled([
-      // Confirmed working sources
-      parseRSS("https://www.fxstreet.com/rss/news", "FXStreet", "Forex", 15),
-      parseRSS("https://www.forexlive.com/feed/news", "ForexLive", "Forex", 15),
-      parseRSS("https://investinglive.com/feed/", "InvestingLive", "Markets", 15),
-      parseRSS("https://feeds.bloomberg.com/markets/news.rss", "Bloomberg", "Markets", 15),
-      parseRSS("https://www.marketwatch.com/rss/topstories", "MarketWatch", "Markets", 15),
-      parseRSS("https://www.nasdaq.com/feed/rssoutbound?category=Markets", "Nasdaq", "Markets", 15),
+      parseRSS("https://www.fxstreet.com/rss/news", "FXStreet", "Forex", 20),
+      parseRSS("https://www.forexlive.com/feed/news", "ForexLive", "Forex", 20),
+      parseRSS("https://investinglive.com/feed/", "InvestingLive", "Markets", 20),
     ]);
 
     const allItems: Article[] = [];

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
 
 interface COTWeek { weekDate: string; nonCommNet: number; openInterest: number; changeLong: number; changeShort: number; nonCommLong: number; nonCommShort: number; commNet: number; }
@@ -12,10 +12,24 @@ function formatK(n: number) {
 }
 
 function fmtDate(raw: string) {
-  // "2026-03-24T00:00:00.000" → "24 Mar 2026"
   const d = new Date(raw);
   if (isNaN(d.getTime())) return raw.slice(0, 10);
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function toInputDate(raw: string) {
+  // "2026-03-24T00:00:00.000" → "2026-03-24"
+  return raw.slice(0, 10);
+}
+
+/** Returns true if it's Friday ET between 15:00 and 18:00 (publication window) */
+function isCOTPublicationWindow(): boolean {
+  const now = new Date();
+  const etStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+  const et = new Date(etStr);
+  const day = et.getDay(); // 5 = Friday
+  const hour = et.getHours();
+  return day === 5 && hour >= 15 && hour < 18;
 }
 
 const CUSTOM_TOOLTIP = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
@@ -35,13 +49,41 @@ export default function COTChartCard() {
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState("EUR/USD");
   const [catFilter, setCatFilter] = useState("Forex");
-  const [weekIdx, setWeekIdx]     = useState(0); // 0 = most recent
+  const [weekIdx, setWeekIdx]     = useState(0);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [inWindow, setInWindow]   = useState(false);
 
-  useEffect(() => {
-    fetch("/api/cot").then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
+  const loadData = useCallback(() => {
+    fetch(`/api/cot?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then((d: COTInstrument[]) => {
+        setData(d);
+        setLoading(false);
+        setLastUpdate(new Date());
+      })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Smart polling: every 5 min during Friday publication window, every 30 min otherwise
+  useEffect(() => {
+    const schedule = () => {
+      const inW = isCOTPublicationWindow();
+      setInWindow(inW);
+      return inW ? 5 * 60 * 1000 : 30 * 60 * 1000;
+    };
+
+    let timer: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const delay = schedule();
+      timer = setTimeout(() => { loadData(); loop(); }, delay);
+    };
+    loop();
+    return () => clearTimeout(timer);
+  }, [loadData]);
 
   // Reset week index when instrument changes
   useEffect(() => { setWeekIdx(0); }, [selected]);
@@ -49,20 +91,17 @@ export default function COTChartCard() {
   const categories = ["Forex", "Commodities", "Indices", "Crypto"];
   const inst = data.find(d => d.name === selected);
 
-  // history[0] = most recent, history[N] = oldest
   const weekData = inst?.history[weekIdx] ?? inst?.latest;
   const maxIdx   = inst ? inst.history.length - 1 : 0;
 
-  // For the chart: reversed so oldest→newest on x-axis; mark selected week
+  // Chart data: reversed so oldest→newest on x-axis
   const chartData = inst ? [...inst.history].reverse().map((h, i) => ({
-    date:    fmtDate(h.weekDate).slice(0, 6), // "24 Mar" style label
+    date:    fmtDate(h.weekDate).slice(0, 6),
     fullDate: fmtDate(h.weekDate),
     net:     h.nonCommNet,
-    // The reversed index corresponding to weekIdx (0=latest = last in reversed array)
     selected: i === (inst.history.length - 1 - weekIdx),
   })) : [];
 
-  // X-axis label of selected week (for reference line)
   const selectedLabel = chartData.find(d => d.selected)?.date ?? "";
 
   const extremeForWeek = (() => {
@@ -78,25 +117,51 @@ export default function COTChartCard() {
   const weekNet = weekData?.nonCommNet ?? 0;
   const weekSentiment = weekNet > 0 ? "Bullish" : weekNet < 0 ? "Bearish" : "Neutral";
 
+  // Handle date picker: find closest week index
+  const handleDatePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!inst) return;
+    const picked = e.target.value; // "YYYY-MM-DD"
+    if (!picked) return;
+    const pickedMs = new Date(picked).getTime();
+    let best = 0;
+    let bestDiff = Infinity;
+    inst.history.forEach((h, i) => {
+      const diff = Math.abs(new Date(h.weekDate.slice(0, 10)).getTime() - pickedMs);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    });
+    setWeekIdx(best);
+  };
+
+  // Date range for picker
+  const minDate = inst ? toInputDate(inst.history[inst.history.length - 1]?.weekDate ?? "") : "";
+  const maxDate = inst ? toInputDate(inst.history[0]?.weekDate ?? "") : "";
+  const currentDateVal = weekData ? toInputDate(weekData.weekDate) : "";
+
   return (
     <div style={{ background: "#10101e", border: "1px solid #1c1c38", borderRadius: 12, padding: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>COT — 2 Ans d&apos;Historique</h3>
-          <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>Positions Non-Commerciales nettes · Source CFTC</p>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>COT — Positionnement Institutionnel</h3>
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+            Positions Non-Commerciales nettes · 2 ans d&apos;historique
+            {inWindow && <span style={{ marginLeft: 8, color: "#f0c84a", background: "rgba(240,200,74,0.1)", padding: "1px 6px", borderRadius: 4, border: "1px solid rgba(240,200,74,0.2)" }}>⚡ Publication en cours</span>}
+          </p>
         </div>
-        {weekData && (
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>
-              {weekIdx === 0 ? "Dernière semaine" : `Semaine ${weekIdx + 1}/${inst?.history.length ?? 1}`} · {fmtDate(weekData.weekDate)}
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          {weekData && (
             <div style={{ fontSize: 12, fontWeight: 700,
               color: weekSentiment === "Bullish" ? "#22c55e" : weekSentiment === "Bearish" ? "#ef4444" : "#eab308",
               background: weekSentiment === "Bullish" ? "rgba(34,197,94,0.1)" : weekSentiment === "Bearish" ? "rgba(239,68,68,0.1)" : "rgba(234,179,8,0.1)",
               padding: "2px 10px", borderRadius: 999, border: "1px solid currentColor",
             }}>{weekSentiment}</div>
-          </div>
-        )}
+          )}
+          {lastUpdate && (
+            <div style={{ fontSize: 10, color: "#334155" }}>
+              MàJ {lastUpdate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+              {inWindow && <span style={{ color: "#f0c84a" }}> · actualisation 5 min</span>}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Category tabs */}
@@ -133,9 +198,10 @@ export default function COTChartCard() {
         <div className="skeleton" style={{ height: 240 }} />
       ) : inst && weekData ? (
         <>
-          {/* Week navigator */}
+          {/* Date selector */}
           {inst.history.length > 1 && (
             <div style={{ marginBottom: 16, background: "#0d0d1a", border: "1px solid #1c1c38", borderRadius: 8, padding: "10px 14px" }}>
+              {/* Prev/Next + date display */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 11, color: "#475569", whiteSpace: "nowrap" }}>📅 Semaine :</span>
                 <button onClick={() => setWeekIdx(i => Math.max(0, i - 1))} disabled={weekIdx === 0}
@@ -149,6 +215,31 @@ export default function COTChartCard() {
                   style={{ fontSize: 13, padding: "1px 8px", borderRadius: 5, cursor: weekIdx === maxIdx ? "not-allowed" : "pointer",
                     background: "transparent", border: "1px solid #1c1c38", color: weekIdx === maxIdx ? "#1c1c38" : "#94a3b8" }}>›</button>
               </div>
+
+              {/* Date picker */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap" }}>Aller à :</span>
+                <input
+                  type="date"
+                  value={currentDateVal}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={handleDatePick}
+                  style={{
+                    background: "#10101e", border: "1px solid #2a2a50", borderRadius: 5,
+                    color: "#f0c84a", fontSize: 11, padding: "3px 8px", cursor: "pointer",
+                    fontFamily: "JetBrains Mono, monospace",
+                    colorScheme: "dark",
+                  }}
+                />
+                {weekIdx !== 0 && (
+                  <button onClick={() => setWeekIdx(0)} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, cursor: "pointer", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e" }}>
+                    Dernière
+                  </button>
+                )}
+              </div>
+
+              {/* Slider */}
               <input type="range" min={0} max={maxIdx} value={weekIdx}
                 onChange={e => setWeekIdx(Number(e.target.value))}
                 style={{ width: "100%", accentColor: "#f0c84a", cursor: "pointer" }}
@@ -223,7 +314,7 @@ export default function COTChartCard() {
           </ResponsiveContainer>
         </>
       ) : (
-        <div style={{ textAlign: "center", color: "#475569", padding: 40 }}>Données COT indisponibles (publiées chaque vendredi)</div>
+        <div style={{ textAlign: "center", color: "#475569", padding: 40 }}>Données indisponibles — publication chaque vendredi vers 15h30 ET</div>
       )}
     </div>
   );

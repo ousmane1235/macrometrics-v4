@@ -25,7 +25,7 @@ export default function FearGreedCard() {
     <div style={{ background: "#10101e", border: "1px solid #1c1c38", borderRadius: 12, padding: 20, height: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Fear & Greed</h3>
-        <span style={{ fontSize: 10, color: "#475569", background: "#0d0d1a", padding: "2px 8px", borderRadius: 999, border: "1px solid #1c1c38" }}>alternative.me</span>
+        <span style={{ fontSize: 10, color: "#475569", background: "#0d0d1a", padding: "2px 8px", borderRadius: 999, border: "1px solid #1c1c38" }}>Crypto · 30j</span>
       </div>
       {loading ? <div className="skeleton" style={{ height: 160 }} /> : data ? (
         <>

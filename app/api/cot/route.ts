@@ -1,5 +1,11 @@
 export const dynamic = "force-dynamic";
 
+// ─── CFTC Official Open Data API ─────────────────────────────────────────────
+// Source: https://publicreporting.cftc.gov (portail officiel CFTC)
+// Dataset: Commitments of Traders — Futures Only (Legacy format)
+// Même données que https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm
+// Publiées chaque vendredi ~15h30 ET (couverture: semaine jusqu'au mardi précédent)
+
 export interface COTWeek {
   weekDate: string;
   nonCommLong: number;
@@ -19,12 +25,11 @@ export interface COTInstrument {
   category: string;
   code: string;
   latest: COTWeek;
-  history: COTWeek[];  // up to 2 years
+  history: COTWeek[];
   sentiment: "Bullish" | "Bearish" | "Neutral";
-  extremeLevel: number; // 0-100, percentile vs 2yr range
+  extremeLevel: number;
 }
 
-// CFTC public API — Socrata endpoint, filtered by exact market_and_exchange_names
 const COT_INSTRUMENTS = [
   { name: "EUR/USD",    market: "EURO FX - CHICAGO MERCANTILE EXCHANGE",                        category: "Forex" },
   { name: "GBP/USD",   market: "BRITISH POUND - CHICAGO MERCANTILE EXCHANGE",                  category: "Forex" },
@@ -41,70 +46,72 @@ const COT_INSTRUMENTS = [
   { name: "Bitcoin",   market: "BITCOIN - CHICAGO MERCANTILE EXCHANGE",                        category: "Crypto" },
 ];
 
-// Two-year cutoff date
-function twoYearsAgo(): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - 2);
-  return d.toISOString().split("T")[0];
+// ─── Server-side cache: 6h TTL, cleared during Friday publication window ──────
+let cache: { data: COTInstrument[]; ts: number } | null = null;
+const CACHE_TTL = 6 * 60 * 60 * 1000;
+
+function isFridayWindow(): boolean {
+  const et = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  return et.getDay() === 5 && et.getHours() >= 15 && et.getHours() < 19;
 }
 
-type RawRow = Record<string, string>;
+// ─── Fetch 2-year history for one instrument from CFTC Socrata ───────────────
+async function fetchInstrument(market: string): Promise<COTWeek[]> {
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - 2);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-async function fetchInstrumentHistory(market: string): Promise<COTWeek[]> {
-  const cutoff = twoYearsAgo();
   const url = [
     "https://publicreporting.cftc.gov/resource/jun7-fc8e.json",
     `?market_and_exchange_names=${encodeURIComponent(market)}`,
-    `&$where=report_date_as_yyyy_mm_dd>='${cutoff}'`,
+    `&$where=report_date_as_yyyy_mm_dd>='${cutoffStr}'`,
     "&$order=report_date_as_yyyy_mm_dd DESC",
     "&$limit=110",
   ].join("");
 
   const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    next: { revalidate: 3600 }, // 1hr cache (data updates once/week)
+    headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+    cache: "no-store",
   });
-
   if (!res.ok) return [];
-  const rows: RawRow[] = await res.json();
 
-  return rows.map((r) => {
-    const ncLong  = parseInt(r["noncomm_positions_long_all"]  ?? "0");
-    const ncShort = parseInt(r["noncomm_positions_short_all"] ?? "0");
-    const cLong   = parseInt(r["comm_positions_long_all"]     ?? "0");
-    const cShort  = parseInt(r["comm_positions_short_all"]    ?? "0");
-    const oi      = parseInt(r["open_interest_all"]           ?? "0");
-    const chgL    = parseInt(r["change_in_noncomm_long_all"]  ?? "0");
-    const chgS    = parseInt(r["change_in_noncomm_short_all"] ?? "0");
+  const rows = await res.json() as Record<string, string>[];
+  return rows.map(r => {
+    const ncL = parseInt(r["noncomm_positions_long_all"]  ?? "0") || 0;
+    const ncS = parseInt(r["noncomm_positions_short_all"] ?? "0") || 0;
+    const cL  = parseInt(r["comm_positions_long_all"]     ?? "0") || 0;
+    const cS  = parseInt(r["comm_positions_short_all"]    ?? "0") || 0;
+    const oi  = parseInt(r["open_interest_all"]           ?? "0") || 0;
+    const chL = parseInt(r["change_in_noncomm_long_all"]  ?? "0") || 0;
+    const chS = parseInt(r["change_in_noncomm_short_all"] ?? "0") || 0;
     return {
-      weekDate:    r["report_date_as_yyyy_mm_dd"] ?? "",
-      nonCommLong:  ncLong,
-      nonCommShort: ncShort,
-      nonCommNet:   ncLong - ncShort,
-      commLong:     cLong,
-      commShort:    cShort,
-      commNet:      cLong - cShort,
+      weekDate:    (r["report_date_as_yyyy_mm_dd"] ?? "").slice(0, 10),
+      nonCommLong:  ncL, nonCommShort: ncS, nonCommNet: ncL - ncS,
+      commLong:     cL,  commShort:    cS,  commNet:    cL  - cS,
       openInterest: oi,
-      changeLong:   chgL,
-      changeShort:  chgS,
-      changeNet:    chgL - chgS,
+      changeLong:   chL, changeShort:  chS, changeNet:  chL - chS,
     };
   });
 }
 
 function computeExtreme(history: COTWeek[]): number {
   if (history.length < 2) return 50;
-  const nets = history.map((h) => h.nonCommNet);
-  const current = nets[0];
-  const min = Math.min(...nets);
-  const max = Math.max(...nets);
+  const nets = history.map(h => h.nonCommNet);
+  const cur = nets[0], min = Math.min(...nets), max = Math.max(...nets);
   if (max === min) return 50;
-  return Math.round(((current - min) / (max - min)) * 100);
+  return Math.round(((cur - min) / (max - min)) * 100);
 }
 
 export async function GET() {
+  // Clear cache during Friday publication window so fresh data loads immediately
+  if (cache && isFridayWindow()) cache = null;
+
+  if (cache && (Date.now() - cache.ts) < CACHE_TTL) {
+    return Response.json(cache.data);
+  }
+
   const results = await Promise.allSettled(
-    COT_INSTRUMENTS.map((inst) => fetchInstrumentHistory(inst.market))
+    COT_INSTRUMENTS.map(inst => fetchInstrument(inst.market))
   );
 
   const data: COTInstrument[] = COT_INSTRUMENTS.map((inst, i) => {
@@ -116,20 +123,11 @@ export async function GET() {
       changeLong: 0, changeShort: 0, changeNet: 0,
     };
     const extreme = computeExtreme(history);
-    const net = latest.nonCommNet;
     const sentiment: "Bullish" | "Bearish" | "Neutral" =
-      net > 0 ? "Bullish" : net < 0 ? "Bearish" : "Neutral";
-
-    return {
-      name: inst.name,
-      category: inst.category,
-      code: inst.market,
-      latest,
-      history: history.slice(0, 104), // max 2 years
-      sentiment,
-      extremeLevel: extreme,
-    };
+      latest.nonCommNet > 0 ? "Bullish" : latest.nonCommNet < 0 ? "Bearish" : "Neutral";
+    return { name: inst.name, category: inst.category, code: inst.market, latest, history, sentiment, extremeLevel: extreme };
   });
 
+  cache = { data, ts: Date.now() };
   return Response.json(data);
 }

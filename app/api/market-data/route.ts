@@ -9,7 +9,7 @@ async function fetchQuote(yfSymbol: string) {
       "Accept": "application/json",
       "Referer": "https://finance.yahoo.com/",
     },
-    next: { revalidate: 30 },
+    cache: "no-store",
   });
   if (!res.ok) return null;
   const data = await res.json();

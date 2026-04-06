@@ -6,7 +6,7 @@ import { G8_PAIRS, G8_GROUPS } from "@/lib/g8-pairs";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 interface MonthStat { month: string; avg: number; median: number; positive: number; best: number; worst: number; count: number; }
-interface PairSeason { pair: string; group: string; stats: MonthStat[]; yearlyData: { year: number; returns: (number|null)[] }[]; }
+interface PairSeason { pair: string; group: string; stats: MonthStat[]; yearlyData: { year: number; returns: (number|null)[] }[]; source?: "gsheets" | "yahoo"; }
 
 // Recompute stats client-side from filtered yearlyData
 function computeStats(yearlyData: { year: number; returns: (number|null)[] }[]): MonthStat[] {
@@ -47,10 +47,12 @@ const TOOLTIP = ({ active, payload, label }: { active?: boolean; payload?: { pay
 };
 
 const PRESETS = [
-  { label: "1 an",  years: 1 },
-  { label: "3 ans", years: 3 },
-  { label: "5 ans", years: 5 },
-  { label: "10 ans", years: 10 },
+  { label: "1 an",   start: -1,  end: 0 },
+  { label: "3 ans",  start: -3,  end: 0 },
+  { label: "5 ans",  start: -5,  end: 0 },
+  { label: "10 ans", start: -10, end: 0 },
+  { label: "15 ans", start: -15, end: 0 },
+  { label: "20 ans", start: -20, end: 0 },
 ];
 
 export default function SeasonalityG8() {
@@ -67,7 +69,7 @@ export default function SeasonalityG8() {
   // Date range state
   const [dateEnabled, setDateEnabled] = useState(false);
   const [startYear, setStartYear] = useState(currentYear - 10);
-  const endYear = currentYear; // always today
+  const [endYear, setEndYear] = useState(currentYear);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -85,8 +87,9 @@ export default function SeasonalityG8() {
   const groupPairs = G8_PAIRS.filter(p => p.group === group).map(p => p.label);
 
   // Filter yearlyData by date range if enabled
+  const effectiveEnd = endYear < startYear ? startYear : endYear;
   const filteredYearly = (inst?.yearlyData ?? []).filter(y =>
-    !dateEnabled || (y.year >= startYear && y.year <= endYear)
+    !dateEnabled || (y.year >= startYear && y.year <= effectiveEnd)
   );
   const chartData = dateEnabled ? computeStats(filteredYearly) : (inst?.stats ?? []);
   const maxAbs = chartData.length ? Math.max(...chartData.map(d => Math.abs(d.avg)), 0.1) : 1;
@@ -96,12 +99,11 @@ export default function SeasonalityG8() {
     const d = allData.find(a => a.pair === pair);
     if (!d) return [];
     if (!dateEnabled) return d.stats;
-    const fy = d.yearlyData.filter(y => y.year >= startYear && y.year <= endYear);
+    const fy = d.yearlyData.filter(y => y.year >= startYear && y.year <= effectiveEnd);
     return computeStats(fy);
   }
 
   const parisDate = new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" });
-  const todayStr = today.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div style={{ background: "#10101e", border: "1px solid #1c1c38", borderRadius: 12, padding: 20 }}>
@@ -110,10 +112,20 @@ export default function SeasonalityG8() {
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Saisonnalité G8 — 28 Paires</h3>
           <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
-            Données réelles Yahoo Finance · {dateEnabled ? `${startYear}–${endYear} (${endYear - startYear} ans)` : "10 ans"} · {parisDate}
+            Historique mensuel · {dateEnabled ? `${startYear}–${effectiveEnd} (${effectiveEnd - startYear + 1} ans)` : "10 ans"} · {parisDate}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {inst && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 999,
+              background: inst.source === "gsheets" ? "rgba(34,197,94,0.1)" : "rgba(59,130,246,0.1)",
+              border: `1px solid ${inst.source === "gsheets" ? "rgba(34,197,94,0.3)" : "rgba(59,130,246,0.3)"}`,
+              color: inst.source === "gsheets" ? "#22c55e" : "#3b82f6",
+            }}>
+              {inst.source === "gsheets" ? "📄 Mes données" : "📡 Yahoo Finance"}
+            </span>
+          )}
           {(["bars","heatmap"] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
               background: view === v ? "rgba(212,175,55,0.12)" : "transparent",
@@ -127,60 +139,78 @@ export default function SeasonalityG8() {
 
       {/* Date range filter */}
       <div style={{ marginBottom: 14, padding: "12px 14px", background: "#0d0d1a", border: `1px solid ${dateEnabled ? "rgba(212,175,55,0.3)" : "#1c1c38"}`, borderRadius: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {/* Toggle */}
+        {/* Toggle row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: dateEnabled ? 10 : 0 }}>
           <button onClick={() => setDateEnabled(e => !e)} style={{ display: "flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
             <div style={{ width: 34, height: 18, borderRadius: 999, background: dateEnabled ? "rgba(212,175,55,0.25)" : "#1c1c38", border: `1px solid ${dateEnabled ? "rgba(212,175,55,0.5)" : "#2a2a50"}`, position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
               <div style={{ position: "absolute", top: 2, left: dateEnabled ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: dateEnabled ? "#f0c84a" : "#475569", transition: "left 0.2s" }} />
             </div>
             <span style={{ fontSize: 11, fontWeight: 600, color: dateEnabled ? "#f0c84a" : "#475569" }}>Filtre par période</span>
           </button>
-
           {dateEnabled && (
-            <>
-              <div style={{ width: 1, height: 18, background: "#1c1c38" }} />
-
-              {/* Presets */}
-              <div style={{ display: "flex", gap: 4 }}>
-                {PRESETS.map(p => {
-                  const sy = currentYear - p.years;
-                  return (
-                    <button key={p.label} onClick={() => setStartYear(sy)}
-                      style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                        background: startYear === sy ? "rgba(212,175,55,0.15)" : "transparent",
-                        border: `1px solid ${startYear === sy ? "rgba(212,175,55,0.4)" : "#1c1c38"}`,
-                        color: startYear === sy ? "#f0c84a" : "#64748b" }}>
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ width: 1, height: 18, background: "#1c1c38" }} />
-
-              {/* Custom year range */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <span style={{ color: "#475569" }}>De</span>
-                <input
-                  type="number"
-                  min={currentYear - 25}
-                  max={currentYear - 1}
-                  value={startYear}
-                  onChange={e => setStartYear(Math.min(currentYear - 1, Math.max(currentYear - 25, parseInt(e.target.value) || currentYear - 10)))}
-                  style={{ width: 58, background: "#10101e", border: "1px solid #1c1c38", borderRadius: 5, color: "#f1f5f9", fontSize: 11, padding: "2px 6px", textAlign: "center", fontFamily: "JetBrains Mono, monospace" }}
-                />
-                <span style={{ color: "#475569" }}>à</span>
-                <span style={{ fontFamily: "JetBrains Mono, monospace", color: "#22c55e", fontWeight: 600, fontSize: 11, padding: "2px 8px", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 5 }}>
-                  {todayStr}
-                </span>
-              </div>
-
-              <span style={{ fontSize: 10, color: "#475569", marginLeft: "auto" }}>
-                {filteredYearly.length} années · {filteredYearly.length} pts/mois max
-              </span>
-            </>
+            <span style={{ fontSize: 10, color: "#475569", marginLeft: "auto" }}>
+              {filteredYearly.length} années sélectionnées
+            </span>
           )}
         </div>
+
+        {dateEnabled && (
+          <>
+            {/* Presets */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+              {PRESETS.map(p => {
+                const sy = currentYear + p.start;
+                const ey = currentYear + p.end;
+                const active = startYear === sy && endYear === ey;
+                return (
+                  <button key={p.label} onClick={() => { setStartYear(sy); setEndYear(ey); }}
+                    style={{ fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, cursor: "pointer",
+                      background: active ? "rgba(212,175,55,0.15)" : "transparent",
+                      border: `1px solid ${active ? "rgba(212,175,55,0.4)" : "#1c1c38"}`,
+                      color: active ? "#f0c84a" : "#64748b" }}>
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom range: De AAAA à AAAA */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, flexWrap: "wrap" }}>
+              <span style={{ color: "#475569" }}>De</span>
+              <input
+                type="number"
+                min={1990}
+                max={effectiveEnd}
+                value={startYear}
+                onChange={e => {
+                  const v = parseInt(e.target.value) || currentYear - 10;
+                  setStartYear(Math.min(effectiveEnd, Math.max(1990, v)));
+                }}
+                style={{ width: 62, background: "#10101e", border: "1px solid #2a2a50", borderRadius: 5, color: "#f0c84a", fontSize: 11, padding: "3px 6px", textAlign: "center", fontFamily: "JetBrains Mono, monospace" }}
+              />
+              <span style={{ color: "#475569" }}>à</span>
+              <input
+                type="number"
+                min={startYear}
+                max={currentYear}
+                value={endYear}
+                onChange={e => {
+                  const v = parseInt(e.target.value) || currentYear;
+                  setEndYear(Math.min(currentYear, Math.max(startYear, v)));
+                }}
+                style={{ width: 62, background: "#10101e", border: "1px solid #2a2a50", borderRadius: 5, color: "#f0c84a", fontSize: 11, padding: "3px 6px", textAlign: "center", fontFamily: "JetBrains Mono, monospace" }}
+              />
+              {endYear === currentYear && (
+                <span style={{ fontSize: 9, color: "#22c55e", background: "rgba(34,197,94,0.08)", padding: "1px 6px", borderRadius: 4, border: "1px solid rgba(34,197,94,0.2)" }}>
+                  Aujourd&apos;hui
+                </span>
+              )}
+              <span style={{ color: "#475569", marginLeft: 4 }}>
+                → <strong style={{ color: "#94a3b8" }}>{effectiveEnd - startYear + 1}</strong> ans
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Group tabs */}
@@ -287,7 +317,7 @@ export default function SeasonalityG8() {
           )}
         </>
       ) : (
-        <div style={{ textAlign: "center", color: "#475569", padding: 40 }}>Chargement des données Yahoo Finance…</div>
+        <div style={{ textAlign: "center", color: "#475569", padding: 40 }}>Chargement des données saisonnières…</div>
       )}
     </div>
   );

@@ -8,20 +8,17 @@ export default function NewsPage() {
     <div style={{ maxWidth: 1600, margin: "0 auto", padding: "24px 20px" }}>
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f1f5f9" }}>Analyse Fondamentale</h1>
-        <p style={{ fontSize: 13, color: "#475569", marginTop: 6 }}>🇫🇷 {parisDate} · FXStreet · ForexLive · InvestingLive · Bloomberg · MarketWatch · Nasdaq</p>
+        <p style={{ fontSize: 13, color: "#475569", marginTop: 6 }}>🇫🇷 {parisDate} · FXStreet · ForexLive · InvestingLive</p>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20 }}>
         <FundamentalFeed limit={50} />
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "#10101e", border: "1px solid #1c1c38", borderRadius: 12, padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sources Gratuites</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sources</h3>
             {[
               { name: "FXStreet", color: "#06b6d4", tag: "Forex", desc: "Analyse forex & calendrier économique" },
               { name: "ForexLive", color: "#22c55e", tag: "Forex", desc: "Commentaires live, BCE, Fed, BOJ" },
               { name: "InvestingLive", color: "#10b981", tag: "Markets", desc: "Actualité marchés en temps réel" },
-              { name: "Bloomberg", color: "#3b82f6", tag: "Markets", desc: "Marchés financiers globaux" },
-              { name: "MarketWatch", color: "#ec4899", tag: "Markets", desc: "Actions et indices US" },
-              { name: "Nasdaq", color: "#60a5fa", tag: "Markets", desc: "Marchés US & tech" },
             ].map(({ name, color, tag, desc }) => (
               <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid #1c1c3840" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

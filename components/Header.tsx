@@ -6,11 +6,9 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { label: "Dashboard", href: "/" },
-  { label: "Analyse Macro", href: "/analyse" },
   { label: "Calendrier", href: "/calendar" },
   { label: "COT & Retail", href: "/cot" },
   { label: "Saisonnalité G8", href: "/seasonality" },
-  { label: "Graphiques", href: "/charts" },
   { label: "News", href: "/news" },
 ];
 
@@ -56,7 +54,7 @@ export default function Header() {
           <div style={{ width: 30, height: 30, background: "linear-gradient(135deg, #d4af37, #f0c84a)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 15, color: "#000" }}>M</div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, background: "linear-gradient(135deg, #d4af37, #f0c84a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", lineHeight: 1.1 }}>MacroMetrics</div>
-            <div style={{ fontSize: 9, color: "#475569", letterSpacing: "0.1em", textTransform: "uppercase" }}>v3 · G8 · COT · TradingView</div>
+            <div style={{ fontSize: 9, color: "#475569", letterSpacing: "0.1em", textTransform: "uppercase" }}>G8 · COT · Saisonnalité · News</div>
           </div>
         </Link>
 

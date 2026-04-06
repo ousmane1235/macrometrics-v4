@@ -15,7 +15,7 @@ export async function GET() {
   try {
     const res = await fetch(
       "https://api.alternative.me/fng/?limit=30&format=json",
-      { next: { revalidate: 3600 } }
+      { cache: "no-store" }
     );
     if (!res.ok) throw new Error("fetch failed");
     const json = await res.json();

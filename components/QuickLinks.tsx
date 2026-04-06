@@ -1,12 +1,10 @@
 "use client";
 import Link from "next/link";
 const LINKS = [
-  { href: "/analyse", label: "Analyse Macro", desc: "G8 · Matières Premières · Crypto · PIB · CPI · PMI", icon: "🧠", color: "#f0c84a" },
   { href: "/cot", label: "COT & Retail", desc: "2 ans · Retail · Open Interest", icon: "🏦", color: "#d4af37" },
   { href: "/seasonality", label: "Saisonnalité G8", desc: "28 paires · Heatmap · 10 ans", icon: "📊", color: "#22c55e" },
-  { href: "/charts", label: "Graphiques TradingView", desc: "EUR/USD · Gold · DXY · RSI · MACD", icon: "📈", color: "#a855f7" },
   { href: "/calendar", label: "Calendrier Éco", desc: "Événements haute importance", icon: "📅", color: "#3b82f6" },
-  { href: "/news", label: "Analyse Fondamentale", desc: "FXStreet · ING Think · ForexLive", icon: "🔍", color: "#f97316" },
+  { href: "/news", label: "Analyse Fondamentale", desc: "FXStreet · ForexLive · InvestingLive", icon: "🔍", color: "#f97316" },
 ];
 export default function QuickLinks() {
   return (

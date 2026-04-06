@@ -57,7 +57,7 @@ export default function OpenInterestCard() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Open Interest</h3>
-          <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>Futures · Prix Yahoo · OI CFTC (hebdo)</p>
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>Futures · Prix temps réel · Positions hebdo</p>
         </div>
         <span style={{ fontSize: 10, color: "#3b82f6", background: "rgba(59,130,246,0.1)", padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(59,130,246,0.2)" }}>CME · ICE · CBOT</span>
       </div>

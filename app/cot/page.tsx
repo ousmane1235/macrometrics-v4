@@ -1,6 +1,5 @@
 import COTChartCard from "@/components/COTChartCard";
 import RetailSentimentCard from "@/components/RetailSentimentCard";
-import OpenInterestCard from "@/components/OpenInterestCard";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +9,7 @@ export default function COTPage() {
     <div style={{ maxWidth: 1600, margin: "0 auto", padding: "24px 20px" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f1f5f9" }}>COT — Positionnement Institutionnel</h1>
-        <p style={{ fontSize: 13, color: "#475569", marginTop: 6 }}>🇫🇷 {parisDate} · Source CFTC · Mis à jour chaque vendredi</p>
+        <p style={{ fontSize: 13, color: "#475569", marginTop: 6 }}>🇫🇷 {parisDate} · Positionnement institutionnel · Mis à jour chaque vendredi</p>
       </div>
 
       {/* Education cards */}
@@ -31,13 +30,12 @@ export default function COTPage() {
         <COTChartCard />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <RetailSentimentCard />
-        <OpenInterestCard />
       </div>
 
       <div style={{ marginTop: 20, padding: "14px 18px", background: "#10101e", border: "1px solid #1c1c38", borderRadius: 10, fontSize: 12, color: "#475569", lineHeight: 1.7 }}>
-        📊 <strong style={{ color: "#94a3b8" }}>Méthode COT :</strong> Attendre que le net non-commercial soit à un extrême (percentile &lt;20% ou &gt;80% sur 2 ans) PUIS confirmer avec divergence prix/positions ou un retournement de tendance hebdomadaire. Les données sont publiées le <strong style={{ color: "#f0c84a" }}>vendredi</strong> et couvrent la semaine jusqu&apos;au mardi précédent.
+        📊 <strong style={{ color: "#94a3b8" }}>Méthode COT :</strong> Attendre que le net non-commercial soit à un extrême (percentile &lt;20% ou &gt;80% sur 2 ans) PUIS confirmer avec une divergence prix/positions ou un retournement de tendance hebdomadaire. Les données sont publiées chaque <strong style={{ color: "#f0c84a" }}>vendredi vers 15h30 ET</strong> et couvrent la semaine jusqu&apos;au mardi précédent. La page se rafraîchit automatiquement à la publication.
       </div>
     </div>
   );
