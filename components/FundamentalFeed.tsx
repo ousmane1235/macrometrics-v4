@@ -24,8 +24,7 @@ function timeAgo(dateStr: string) {
 const CATEGORIES = ["Tous", "Forex", "Markets"];
 const PAGE_SIZE = 10;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function FundamentalFeed({ limit: _ }: { limit?: number }) {
+export default function FundamentalFeed({ limit }: { limit?: number }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState("Tous");
@@ -42,7 +41,7 @@ export default function FundamentalFeed({ limit: _ }: { limit?: number }) {
   useEffect(() => { setPage(1); setExpanded(null); }, [cat]);
 
   const filtered = cat === "Tous" ? articles : articles.filter(a => a.category === cat || a.source === cat);
-  const pool = filtered;
+  const pool = limit ? filtered.slice(0, limit) : filtered;
   const totalPages = Math.ceil(pool.length / PAGE_SIZE);
   const paginated = pool.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
