@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 const LINKS = [
-  { href: "/cot", label: "COT & Retail", desc: "2 ans · Retail · Open Interest", icon: "🏦", color: "#d4af37" },
-  { href: "/seasonality", label: "Saisonnalité G8", desc: "28 paires · Heatmap · 10 ans", icon: "📊", color: "#22c55e" },
-  { href: "/calendar", label: "Calendrier Éco", desc: "Événements haute importance", icon: "📅", color: "#3b82f6" },
-  { href: "/news", label: "Analyse Fondamentale", desc: "FXStreet · ForexLive · InvestingLive", icon: "🔍", color: "#f97316" },
+  { href: "/cot",         label: "COT & Retail",         desc: "2 ans · Retail · Open Interest",      icon: "🏦", color: "#d4af37" },
+  { href: "/charts",      label: "Graphiques",           desc: "TradingView · Mon Indicateur · OI",    icon: "📈", color: "#a855f7" },
+  { href: "/seasonality", label: "Saisonnalité G8",      desc: "28 paires · Heatmap · 10 ans",         icon: "📊", color: "#22c55e" },
+  { href: "/calendar",    label: "Calendrier Éco",       desc: "Événements haute importance",           icon: "📅", color: "#3b82f6" },
+  { href: "/news",        label: "Analyse Fondamentale", desc: "FXStreet · ForexLive · InvestingLive", icon: "🔍", color: "#f97316" },
 ];
 export default function QuickLinks() {
   return (

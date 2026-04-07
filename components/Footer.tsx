@@ -14,7 +14,7 @@ export default function Footer() {
         <div style={{ display: "flex", gap: 48, flexWrap: "wrap" }}>
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Outils</p>
-            {[["Dashboard", "/"], ["COT & Retail", "/cot"], ["Saisonnalité G8", "/seasonality"], ["Calendrier", "/calendar"], ["News", "/news"]].map(([l, h]) => (
+            {[["Dashboard", "/"], ["COT & Retail", "/cot"], ["Graphiques", "/charts"], ["Saisonnalité G8", "/seasonality"], ["Calendrier", "/calendar"], ["News", "/news"]].map(([l, h]) => (
               <Link key={h} href={h} style={{ display: "block", fontSize: 12, color: "#94a3b8", textDecoration: "none", marginBottom: 6 }}>{l}</Link>
             ))}
           </div>

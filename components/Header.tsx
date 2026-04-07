@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { label: "Dashboard", href: "/" },
-  { label: "Calendrier", href: "/calendar" },
-  { label: "COT & Retail", href: "/cot" },
-  { label: "Saisonnalité G8", href: "/seasonality" },
-  { label: "News", href: "/news" },
+  { label: "Dashboard",      href: "/" },
+  { label: "Calendrier",     href: "/calendar" },
+  { label: "COT & Retail",   href: "/cot" },
+  { label: "Charts",         href: "/charts" },
+  { label: "Saisonnalité G8",href: "/seasonality" },
+  { label: "News",           href: "/news" },
 ];
 
 function getParis() {
