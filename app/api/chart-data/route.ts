@@ -2,22 +2,57 @@ export const dynamic = "force-dynamic";
 import { type NextRequest } from "next/server";
 
 interface Candle {
-  time: number;   // Unix seconds (lightweight-charts format)
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+  time:   number;
+  open:   number;
+  high:   number;
+  low:    number;
+  close:  number;
   volume: number;
 }
 
-// Module-level cache: key = "symbol|interval|range", value = { data, ts }
+// Module-level cache: key = "symbol|interval|range"
+// TTL adaptatif : plus l'intervalle est court, plus les données vieillissent vite
 const CACHE = new Map<string, { data: Candle[]; ts: number }>();
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes — fine for ≤3 users
+const CACHE_TTL_MAP: Record<string, number> = {
+  "1m":  60 * 1000,          // 1 min  — 1 candle par minute
+  "2m":  90 * 1000,          // 1.5 min
+  "5m":  2  * 60 * 1000,     // 2 min
+  "15m": 3  * 60 * 1000,     // 3 min
+  "30m": 5  * 60 * 1000,     // 5 min
+  "60m": 10 * 60 * 1000,     // 10 min
+  "90m": 10 * 60 * 1000,     // 10 min
+  "1h":  10 * 60 * 1000,     // 10 min
+  "1d":  30 * 60 * 1000,     // 30 min
+  "5d":  60 * 60 * 1000,     // 1 heure
+  "1wk": 60 * 60 * 1000,     // 1 heure
+  "1mo": 4  * 60 * 60 * 1000,// 4 heures
+  "3mo": 4  * 60 * 60 * 1000,// 4 heures
+};
+function getCacheTtl(interval: string): number {
+  return CACHE_TTL_MAP[interval] ?? 10 * 60 * 1000; // défaut 10 min
+}
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
   Accept: "application/json",
   Referer: "https://finance.yahoo.com/",
+};
+
+// Yahoo Finance interval → max range allowed
+const INTERVAL_RANGE_MAP: Record<string, string[]> = {
+  "1m":  ["1d","2d","5d"],
+  "2m":  ["5d","60d"],
+  "5m":  ["5d","60d"],
+  "15m": ["5d","60d"],
+  "30m": ["5d","60d"],
+  "60m": ["5d","60d","200d"],
+  "90m": ["5d","60d"],
+  "1h":  ["5d","60d","200d"],
+  "1d":  ["1mo","3mo","6mo","1y","2y","5y","10y"],
+  "5d":  ["1mo","3mo","6mo","1y","2y","5y","10y"],
+  "1wk": ["3mo","6mo","1y","2y","5y","10y"],
+  "1mo": ["6mo","1y","2y","5y","10y"],
+  "3mo": ["1y","2y","5y","10y"],
 };
 
 async function fetchCandles(symbol: string, interval: string, range: string): Promise<Candle[]> {
@@ -42,11 +77,11 @@ async function fetchCandles(symbol: string, interval: string, range: string): Pr
     const o = opens[i], h = highs[i], l = lows[i], c = closes[i];
     if (o == null || h == null || l == null || c == null) continue;
     candles.push({
-      time: timestamps[i],
-      open: parseFloat(o.toFixed(6)),
-      high: parseFloat(h.toFixed(6)),
-      low:  parseFloat(l.toFixed(6)),
-      close: parseFloat(c.toFixed(6)),
+      time:   timestamps[i],
+      open:   parseFloat(o.toFixed(6)),
+      high:   parseFloat(h.toFixed(6)),
+      low:    parseFloat(l.toFixed(6)),
+      close:  parseFloat(c.toFixed(6)),
       volume: volumes[i] ?? 0,
     });
   }
@@ -55,25 +90,31 @@ async function fetchCandles(symbol: string, interval: string, range: string): Pr
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const symbol   = searchParams.get("symbol")   ?? "EURUSD=X";
-  const interval = searchParams.get("interval") ?? "1d";
-  const range    = searchParams.get("range")    ?? "6mo";
+  const symbol   = (searchParams.get("symbol")   ?? "EURUSD=X").trim();
+  const interval = (searchParams.get("interval") ?? "1d").trim();
+  const range    = (searchParams.get("range")    ?? "1y").trim();
 
-  const VALID_INTERVALS = ["1d","1wk","1mo"];
-  const VALID_RANGES    = ["1mo","3mo","6mo","1y","2y","5y","10y"];
-  const safeInterval = VALID_INTERVALS.includes(interval) ? interval : "1d";
-  const safeRange    = VALID_RANGES.includes(range)       ? range    : "6mo";
+  // Validate interval
+  const validIntervals = Object.keys(INTERVAL_RANGE_MAP);
+  const safeInterval = validIntervals.includes(interval) ? interval : "1d";
+
+  // Validate range for this interval
+  const validRanges = INTERVAL_RANGE_MAP[safeInterval] ?? ["1y"];
+  const safeRange   = validRanges.includes(range) ? range : validRanges[validRanges.length - 1];
 
   const cacheKey = `${symbol}|${safeInterval}|${safeRange}`;
+  const ttl = getCacheTtl(safeInterval);
   const hit = CACHE.get(cacheKey);
-  if (hit && Date.now() - hit.ts < CACHE_TTL) {
+  if (hit && Date.now() - hit.ts < ttl) {
     return Response.json(hit.data, { headers: { "X-Cache": "HIT" } });
   }
 
   try {
     const data = await fetchCandles(symbol, safeInterval, safeRange);
     CACHE.set(cacheKey, { data, ts: Date.now() });
-    return Response.json(data, { headers: { "X-Cache": "MISS", "X-Count": String(data.length) } });
+    return Response.json(data, {
+      headers: { "X-Cache": "MISS", "X-Count": String(data.length) },
+    });
   } catch {
     const stale = CACHE.get(cacheKey);
     if (stale) return Response.json(stale.data, { headers: { "X-Cache": "STALE" } });
